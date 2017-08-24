@@ -1,0 +1,170 @@
+<schemalist>
+  <schema id="org.gnome.shell.extensions.tilingnome" path="/org/gnome/shell/extensions/tilingnome/">
+    <key name="layouts" type="as">
+      <choices>
+        <choice value='horizontal'/>
+        <choice value='vertical'/>
+      </choices>
+      <default>['horizontal', 'vertical']</default>
+      <summary>Layouts</summary>
+      <description>
+        The order of available layouts.
+      </description>
+    </key>
+    <key name="auto-tile-window-types" type="as">
+      <default>['NORMAL']</default>
+      <summary>Auto Tile Window Types</summary>
+      <description>
+        Automatically tile windows of the specified types at creation.
+      </description>
+    </key>
+    <key name="maximize-single" type="b">
+      <default>true</default>
+      <summary>Maximize Single</summary>
+      <description>
+        Whether to maximize lone windows instead of tiling.
+      </description>
+    </key>
+    <key name="master-count" type="u">
+      <range min="1"/>
+      <default>1</default>
+      <summary>Master Count</summary>
+      <description>
+        The master tile count.
+      </description>
+    </key>
+    <key name="split-ratio" type="d">
+      <range min="0.10" max="0.90"/>
+      <default>0.50</default>
+      <summary>Split Ratio</summary>
+      <description>
+        The screen ratio for which windows are split.
+      </description>
+    </key>
+    <key name="split-ratio-step" type="d">
+      <range min="0.0" max="0.40"/>
+      <default>0.050</default>
+      <summary>Split Ratio Step</summary>
+      <description>
+        The ratio at which the split ratio is increased or decreased.
+      </description>
+    </key>
+    <key name="margins" type="(iiii)">
+      <default>(0, 0, 0, 0)</default>
+      <summary>Margins</summary>
+      <description>
+        The margins in pixels to add to the screen's x, y, width and height.
+      </description>
+    </key>
+    <key name="minimum-gaps" type="(iiii)">
+      <default>(0, 0, 0, 0)</default>
+      <summary>Minimum Gaps</summary>
+      <description>
+        The minimum amount of pixels to randomly gap windows' x, y, width and
+        height with.
+      </description>
+    </key>
+    <key name="maximum-gaps" type="(iiii)">
+      <default>(0, 0, 0, 0)</default>
+      <summary>Maximum Gaps</summary>
+      <description>
+        The maximum amount of pixels to randomly gap windows' x, y, width and
+        height with.
+      </description>
+    </key>
+  </schema>
+  <schema id="org.gnome.shell.extensions.tilingnome.keybindings" path="/org/gnome/shell/extensions/tilingnome/keybindings/">
+    <key name="toggle-tile" type="as">
+      <default>['&lt;Super&gt;x']</default>
+      <summary>Toggle Tile</summary>
+      <description>
+        Toggle whether to tile the currently focused window.
+      </description>
+    </key>
+    <key name="switch-next-layout" type="as">
+      <default>['&lt;Super&gt;z']</default>
+      <summary>Switch Next Layout</summary>
+      <description>
+        Switch to the next available layout.
+      </description>
+    </key>
+    <key name="switch-previous-layout" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;z']</default>
+      <summary>Switch Previous Layout</summary>
+      <description>
+        Switch to the previous available layout.
+      </description>
+    </key>
+    <key name="focus-next-tile" type="as">
+      <default>['&lt;Super&gt;j']</default>
+      <summary>Focus Next Tile</summary>
+      <description>
+        Focus the next tile in the tile list.
+      </description>
+    </key>
+    <key name="focus-previous-tile" type="as">
+      <default>['&lt;Super&gt;k']</default>
+      <summary>Focus Previous Tile</summary>
+      <description>
+        Focus the previous tile in the tile list.
+      </description>
+    </key>
+    <key name="focus-first-tile" type="as">
+      <default>['&lt;Super&gt;Return']</default>
+      <summary>Focus Master Tile</summary>
+      <description>
+        Focus the first tile in the tile list.
+      </description>
+    </key>
+    <key name="swap-next-tile" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;j']</default>
+      <summary>Swap Next Tile</summary>
+      <description>
+        Swap the currently focused tile with the next tile in the tile list.
+      </description>
+    </key>
+    <key name="swap-previous-tile" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;k']</default>
+      <summary>Swap Previous Tile</summary>
+      <description>
+        Swap the currently focused tile with the previous tile in the tile
+        list.
+      </description>
+    </key>
+    <key name="swap-first-tile" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;Return']</default>
+      <summary>Swap First Tile</summary>
+      <description>
+        Swap the currently focused tile with the first tile in the tile list.
+      </description>
+    </key>
+    <key name="increase-split" type="as">
+      <default>['&lt;Super&gt;l']</default>
+      <summary>Increase Split</summary>
+      <description>
+        Increase the split ratio by the split ratio step.
+      </description>
+    </key>
+    <key name="decrease-split" type="as">
+      <default>['&lt;Super&gt;h']</default>
+      <summary>Decrease Split</summary>
+      <description>
+        Decrease the split ratio by the split ratio step.
+      </description>
+    </key>
+    <key name="increase-master-count" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;h']</default>
+      <summary>Increase Master Count</summary>
+      <description>
+        Increase the master count by 1.
+      </description>
+    </key>
+    <key name="decrease-master-count" type="as">
+      <default>['&lt;Shift&gt;&lt;Super&gt;l']</default>
+      <summary>Decrease Master Count</summary>
+      <description>
+        Decrease the master count by 1.
+      </description>
+    </key>
+  </schema>
+</schemalist>
