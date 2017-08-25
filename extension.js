@@ -113,6 +113,7 @@ let _handle_sc;
 let _handle_wm0;
 let _handle_wm1;
 let _handle_wm2;
+let _handle_display;
 
 function arrayNeighbor(array, el, n) {
   n += array.indexOf(el);
@@ -125,16 +126,6 @@ function isTileable(win) {
     .some(t => win.window_type === Meta.WindowType[t]);
 }
 
-function swapTiles(w1, w2) {
-  const i1 = tileInfo(w1);
-  const i2 = tileInfo(w2);
-  if (i1 && i2) {
-    const tmp = i1.idx;
-    refreshTile(w1, i2.idx);
-    refreshTile(w2, tmp);
-  }
-}
-
 function getCurrentTiles() {
   return global.screen.get_active_workspace().list_windows()
     .filter(tileInfo).sort(tileSort);
@@ -143,6 +134,17 @@ function getCurrentTiles() {
 function getFocusedWindow(win) {
   return global.screen.get_active_workspace().list_windows()
     .filter(win => win.has_focus())[0];
+}
+
+function swapTiles(w1, w2) {
+  const i1 = tileInfo(w1);
+  const i2 = tileInfo(w2);
+  if (i1 && i2) {
+    const tmp = i1.idx;
+    refreshTile(w1, i2.idx);
+    refreshTile(w2, tmp);
+    refresh();
+  }
 }
 
 function addKeybinding(name, handler) {
@@ -159,6 +161,16 @@ function enable() {
   });
   _handle_wm2 = global.window_manager.connect('destroy', (g, w) => {
     tileDestroy(w.meta_window);
+  });
+  _handle_display = global.display.connect('grab-op-end', (dis, scr, w1, op) => {
+    if (op !== Meta.GrabOp.MOVING)
+      return;
+    const p = global.get_pointer();
+    const r = new Meta.Rectangle({x: p[0], y: p[1], width: 1, height: 1});
+    const w2 = getCurrentTiles()
+      .filter(w => w !== w1 && w.get_frame_rect().intersect(r))[0];
+    if (w2)
+      swapTiles(w1, w2);
   });
   addKeybinding('toggle-tile', () => {
     const win = getFocusedWindow();
@@ -198,21 +210,18 @@ function enable() {
     const w2 = arrayNeighbor(getCurrentTiles(), w1, 1);
     if (w1 && w2)
       swapTiles(w1, w2);
-    refresh();
   });
   addKeybinding('swap-previous-tile', () => {
     const w1 = getFocusedWindow();
     const w2 = arrayNeighbor(getCurrentTiles(), w1, -1);
     if (w1 && w2)
       swapTiles(w1, w2);
-    refresh();
   });
   addKeybinding('swap-first-tile', () => {
     const w1 = getFocusedWindow();
     const w2 = getCurrentTiles()[0];
     if (w1 && w2)
       swapTiles(w1, w2);
-    refresh();
   });
   addKeybinding('increase-split', () => {
     const r = _settings.get_double('split-ratio');
@@ -239,6 +248,7 @@ function enable() {
 function disable() {
   _settings.disconnect(_handle_gs);
   global.screen.disconnect(_handle_sc);
+  global.display.disconnect(_handle_display);
   global.window_manager.disconnect(_handle_wm0);
   global.window_manager.disconnect(_handle_wm1);
   global.window_manager.disconnect(_handle_wm2);
