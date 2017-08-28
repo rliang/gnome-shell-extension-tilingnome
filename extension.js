@@ -168,7 +168,9 @@ function enable() {
     const p = global.get_pointer();
     const r = new Meta.Rectangle({x: p[0], y: p[1], width: 1, height: 1});
     const w2 = getCurrentTiles()
-      .filter(w => w !== w1 && w.get_frame_rect().intersect(r))[0];
+      .filter(w => w !== w1)
+      .filter(w => w.get_monitor() === p[2])
+      .filter(w => w.get_frame_rect().intersect(r)[0])[0];
     if (w2)
       swapTiles(w1, w2);
   });
