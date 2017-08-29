@@ -25,7 +25,7 @@ function tileDestroy(win) {
 }
 
 function tileInfo(win) {
-  return _current_tiles[win.get_stable_sequence()];
+  return _current_tiles[win.get_stable_sequence()] || null;
 }
 
 function tileSort(w1, w2) {
@@ -67,6 +67,7 @@ function refreshMonitor(mon) {
   const wksp = global.screen.get_active_workspace();
   const wins = wksp.list_windows()
     .filter(win => win.get_monitor() === mon)
+    .filter(win => !win.fullscreen)
     .filter(tileInfo)
     .sort(tileSort);
   if (wins.length === 1 && settings.get_boolean('maximize-single'))
