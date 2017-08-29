@@ -3,42 +3,42 @@ const St             = imports.gi.St;
 const Meta           = imports.gi.Meta;
 const Shell          = imports.gi.Shell;
 const Main           = imports.ui.main;
-const Mainloop       = imports.mainloop;
+const Tweener        = imports.ui.tweener;
 const ExtensionUtils = imports.misc.extensionUtils;
 
 let _settings;
 let _bindings;
 
 const layouts = {
-  horizontal: (wins, x, y, w, h) => {
+  horizontal: (wins, area) => {
     const sr = _settings.get_double('split-ratio');
     const mc = Math.min(_settings.get_uint('master-count'), wins.length - 1);
-    return wins.slice(0, mc).map((_, i, part) => [
-      x,
-      y + (i * h / part.length),
-      w * sr,
-      h / part.length
-    ]).concat(wins.slice(mc).map((_, i, part) => [
-      x + w * sr,
-      y + (i * h / part.length),
-      w * (1 - sr),
-      h / part.length
-    ]));
+    return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
+      x:      area.x,
+      y:      area.y + (i * area.height / part.length),
+      width:  area.width * sr,
+      height: area.height / part.length
+    })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
+      x:      area.x + area.width * sr,
+      y:      area.y + (i * area.height / part.length),
+      width:  area.width * (1 - sr),
+      height: area.height / part.length
+    })));
   },
-  vertical: (wins, x, y, w, h) => {
+  vertical: (wins, area) => {
     const sr = _settings.get_double('split-ratio');
     const mc = Math.min(_settings.get_uint('master-count'), wins.length - 1);
-    return wins.slice(0, mc).map((_, i, part) => [
-      x + (i * w / part.length),
-      y,
-      w / part.length,
-      h * sr
-    ]).concat(wins.slice(mc).map((_, i, part) => [
-      x + (i * w / part.length),
-      y + w * sr,
-      w / part.length,
-      h * (1 - sr)
-    ]));
+    return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
+      x:      area.x + (i * area.width / part.length),
+      y:      area.y,
+      width:  area.width / part.length,
+      height: area.height * sr
+    })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
+      x:      area.x + (i * area.width / part.length),
+      y:      area.y + area.width * sr,
+      width:  area.width / part.length,
+      height: area.height * (1 - sr)
+    })));
   }
 };
 
@@ -64,26 +64,50 @@ function tileSort(w1, w2) {
 }
 
 function addGaps(area, gaps) {
-  return [
-    area[0] + gaps[0],
-    area[1] + gaps[1],
-    area[2] - gaps[2] - gaps[0],
-    area[3] - gaps[3] - gaps[1]
-  ];
+  return new Meta.Rectangle({
+    x:      Math.floor(area.x + gaps.x),
+    y:      Math.floor(area.y + gaps.y),
+    width:  Math.floor(area.width - gaps.width - gaps.x),
+    height: Math.floor(area.height - gaps.height - gaps.y)
+  });
 }
 
-function refreshTile(win, idx, geom) {
+function refreshTile(win, idx, rect) {
   const tile = tileInfo(win);
   if (tile.idx !== idx) {
     tile.idx = idx;
     const ming = _settings.get_value('minimum-gaps').deep_unpack();
     const maxg = _settings.get_value('maximum-gaps').deep_unpack();
-    tile.gaps = ming.map((g, i) => g + Math.random() * (maxg[i] - g));
+    tile.gaps = new Meta.Rectangle({
+      x:      ming[0] + Math.random() * (maxg[0] - ming[0]),
+      y:      ming[1] + Math.random() * (maxg[1] - ming[1]),
+      width:  ming[2] + Math.random() * (maxg[2] - ming[2]),
+      height: ming[3] + Math.random() * (maxg[3] - ming[3])
+    });
   }
-  if (geom) {
-    win.unmaximize(Meta.MaximizeFlags.BOTH);
-    win.move_resize_frame.apply(win, [false].concat(addGaps(geom, tile.gaps)));
-  }
+  if (!rect)
+    return;
+  rect = addGaps(rect, tile.gaps);
+  win.unmaximize(Meta.MaximizeFlags.BOTH);
+  const act = win.get_compositor_private();
+  const old = win.get_frame_rect();
+  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+  if (!_settings.get_boolean('enable-animations'))
+    return;
+  Tweener.addTween(act, {
+    transition: 'easeOutQuad',
+    time: 0.25,
+    translation_x: 0,
+    translation_y: 0,
+    scale_x: 1,
+    scale_y: 1,
+    onStart: () => {
+      act.translation_x = old.x - rect.x;
+      act.translation_y = old.y - rect.y;
+      act.set_pivot_point(0, 0);
+      act.set_scale(old.width / rect.width, old.height / rect.height);
+    }
+  });
 }
 
 function refreshMonitor(mon) {
@@ -95,14 +119,17 @@ function refreshMonitor(mon) {
   if (wins.length === 1 && _settings.get_boolean('maximize-single'))
     return wins[0].maximize(Meta.MaximizeFlags.BOTH);
   const marg = _settings.get_value('margins').deep_unpack();
-  const rect = wksp.get_work_area_for_monitor(mon);
-  const area = addGaps([rect.x, rect.y, rect.width, rect.height], marg);
-  layouts[_current_layout].apply(null, [wins].concat(area))
-    .forEach((geom, idx) => refreshTile(wins[idx], idx, geom));
+  const area = wksp.get_work_area_for_monitor(mon);
+  layouts[_current_layout](wins, addGaps(area, new Meta.Rectangle({
+    x:      marg[0],
+    y:      marg[1],
+    width:  marg[2],
+    height: marg[3]
+  }))).forEach((rect, idx) => refreshTile(wins[idx], idx, rect));
 }
 
 function refresh() {
-  Mainloop.idle_add(() => {
+  Meta.later_add(Meta.LaterType.RESIZE, () => {
     for (let m = 0; m < global.screen.get_n_monitors(); m++)
       refreshMonitor(m);
   });

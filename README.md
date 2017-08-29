@@ -6,6 +6,7 @@ Tiling window manager
 
 * Horizontal, vertical layouts
 * Gaps
+* Animations
 * (Experimental) Multi-monitor
 
 ## Installation
