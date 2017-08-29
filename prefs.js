@@ -1,10 +1,16 @@
-const GLib           = imports.gi.GLib;
-const Gio            = imports.gi.Gio;
-const Gtk            = imports.gi.Gtk;
-const ExtensionUtils = imports.misc.extensionUtils;
+const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
+const Gtk = imports.gi.Gtk;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
 
-let _settings;
-let _bindings;
+const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
+  Me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
+const settings = new Gio.Settings({
+  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'], true)
+});
+const bindings = new Gio.Settings({
+  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
+});
 
 function prefsWidget(gs) {
   const widget = new Gtk.Box({
@@ -38,21 +44,11 @@ function prefsWidget(gs) {
 
 function buildPrefsWidget() {
   const main = new Gtk.Notebook({});
-  main.append_page(prefsWidget(_settings), new Gtk.Label({label: "Preferences"}));
-  main.append_page(prefsWidget(_bindings), new Gtk.Label({label: "Keybindings"}));
+  main.append_page(prefsWidget(settings), new Gtk.Label({label: "Preferences"}));
+  main.append_page(prefsWidget(bindings), new Gtk.Label({label: "Keybindings"}));
   main.show_all();
   return main;
 }
 
 function init() {
-  const me = ExtensionUtils.getCurrentExtension();
-  const sr = Gio.SettingsSchemaSource.new_from_directory(
-      me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
-  const ss = me.metadata['settings-schema'];
-  _settings = new Gio.Settings({
-    settings_schema: sr.lookup(ss, true)
-  });
-  _bindings = new Gio.Settings({
-    settings_schema: sr.lookup(ss + '.keybindings', true)
-  });
 }

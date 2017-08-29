@@ -1,18 +1,22 @@
-const Gio            = imports.gi.Gio;
-const St             = imports.gi.St;
-const Meta           = imports.gi.Meta;
-const Shell          = imports.gi.Shell;
-const Main           = imports.ui.main;
-const Tweener        = imports.ui.tweener;
-const ExtensionUtils = imports.misc.extensionUtils;
+const Gio = imports.gi.Gio;
+const Meta = imports.gi.Meta;
+const Shell = imports.gi.Shell;
+const Main = imports.ui.main;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
 
-let _settings;
-let _bindings;
+const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
+  Me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
+const settings = new Gio.Settings({
+  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'], true)
+});
+const bindings = new Gio.Settings({
+  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
+});
 
 const layouts = {
   horizontal: (wins, area) => {
-    const sr = _settings.get_double('split-ratio');
-    const mc = Math.min(_settings.get_uint('master-count'), wins.length - 1);
+    const sr = settings.get_double('split-ratio');
+    const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
     return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
       x:      area.x,
       y:      area.y + (i * area.height / part.length),
@@ -26,8 +30,8 @@ const layouts = {
     })));
   },
   vertical: (wins, area) => {
-    const sr = _settings.get_double('split-ratio');
-    const mc = Math.min(_settings.get_uint('master-count'), wins.length - 1);
+    const sr = settings.get_double('split-ratio');
+    const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
     return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
       x:      area.x + (i * area.width / part.length),
       y:      area.y,
@@ -76,8 +80,8 @@ function refreshTile(win, idx, rect) {
   const tile = tileInfo(win);
   if (tile.idx !== idx) {
     tile.idx = idx;
-    const ming = _settings.get_value('minimum-gaps').deep_unpack();
-    const maxg = _settings.get_value('maximum-gaps').deep_unpack();
+    const ming = settings.get_value('minimum-gaps').deep_unpack();
+    const maxg = settings.get_value('maximum-gaps').deep_unpack();
     tile.gaps = new Meta.Rectangle({
       x:      ming[0] + Math.random() * (maxg[0] - ming[0]),
       y:      ming[1] + Math.random() * (maxg[1] - ming[1]),
@@ -98,9 +102,9 @@ function refreshMonitor(mon) {
     .filter(win => win.get_monitor() === mon)
     .filter(tileInfo)
     .sort(tileSort);
-  if (wins.length === 1 && _settings.get_boolean('maximize-single'))
+  if (wins.length === 1 && settings.get_boolean('maximize-single'))
     return wins[0].maximize(Meta.MaximizeFlags.BOTH);
-  const marg = _settings.get_value('margins').deep_unpack();
+  const marg = settings.get_value('margins').deep_unpack();
   const area = wksp.get_work_area_for_monitor(mon);
   layouts[_current_layout](wins, addGaps(area, new Meta.Rectangle({
     x:      marg[0],
@@ -131,7 +135,7 @@ function arrayNeighbor(array, el, n) {
 }
 
 function isTileable(win) {
-  return _settings.get_strv('auto-tile-window-types')
+  return settings.get_strv('auto-tile-window-types')
     .some(t => win.window_type === Meta.WindowType[t]);
 }
 
@@ -157,11 +161,11 @@ function swapTiles(w1, w2) {
 }
 
 function addKeybinding(name, handler) {
-  Main.wm.addKeybinding(name, _bindings, 0, Shell.ActionMode.NORMAL, handler);
+  Main.wm.addKeybinding(name, bindings, 0, Shell.ActionMode.NORMAL, handler);
 }
 
 function enable() {
-  _handle_gs = _settings.connect('changed', refresh);
+  _handle_gs = settings.connect('changed', refresh);
   _handle_sc = global.screen.connect('restacked', refresh);
   _handle_wm0 = global.window_manager.connect('switch-workspace', refresh);
   _handle_wm1 = global.window_manager.connect('map', (g, w) => {
@@ -194,11 +198,11 @@ function enable() {
     refresh();
   });
   addKeybinding('switch-next-layout', () => {
-    _current_layout = arrayNeighbor(_settings.get_strv('layouts'), _current_layout, 1);
+    _current_layout = arrayNeighbor(settings.get_strv('layouts'), _current_layout, 1);
     refresh();
   });
   addKeybinding('switch-previous-layout', () => {
-    _current_layout = arrayNeighbor(_settings.get_strv('layouts'), _current_layout, -1);
+    _current_layout = arrayNeighbor(settings.get_strv('layouts'), _current_layout, -1);
     refresh();
   });
   addKeybinding('focus-next-tile', () => {
@@ -235,20 +239,20 @@ function enable() {
       swapTiles(w1, w2);
   });
   addKeybinding('increase-split', () => {
-    const r = _settings.get_double('split-ratio');
-    _settings.set_double('split-ratio', r + _settings.get_double('split-ratio-step'));
+    const r = settings.get_double('split-ratio');
+    settings.set_double('split-ratio', r + settings.get_double('split-ratio-step'));
   });
   addKeybinding('decrease-split', () => {
-    const r = _settings.get_double('split-ratio');
-    _settings.set_double('split-ratio', r - _settings.get_double('split-ratio-step'));
+    const r = settings.get_double('split-ratio');
+    settings.set_double('split-ratio', r - settings.get_double('split-ratio-step'));
   });
   addKeybinding('increase-master-count', () => {
-    const m = _settings.get_uint('master-count');
-    _settings.set_uint('master-count', m + 1);
+    const m = settings.get_uint('master-count');
+    settings.set_uint('master-count', m + 1);
   });
   addKeybinding('decrease-master-count', () => {
-    const m = _settings.get_uint('master-count');
-    _settings.set_uint('master-count', m - 1);
+    const m = settings.get_uint('master-count');
+    settings.set_uint('master-count', m - 1);
   });
   global.get_window_actors().forEach(win => {
     if (isTileable(win.meta_window))
@@ -257,7 +261,7 @@ function enable() {
 }
 
 function disable() {
-  _settings.disconnect(_handle_gs);
+  settings.disconnect(_handle_gs);
   global.screen.disconnect(_handle_sc);
   global.display.disconnect(_handle_display);
   global.window_manager.disconnect(_handle_wm0);
@@ -278,18 +282,5 @@ function disable() {
   Main.wm.removeKeybinding('decrease-master-count');
   global.get_window_actors().forEach(win => {
     tileDestroy(win.meta_window);
-  });
-}
-
-function init() {
-  const me = ExtensionUtils.getCurrentExtension();
-  const sr = Gio.SettingsSchemaSource.new_from_directory(
-      me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
-  const ss = me.metadata['settings-schema'];
-  _settings = new Gio.Settings({
-    settings_schema: sr.lookup(ss, true)
-  });
-  _bindings = new Gio.Settings({
-    settings_schema: sr.lookup(ss + '.keybindings', true)
   });
 }
