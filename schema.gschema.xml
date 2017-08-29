@@ -18,13 +18,6 @@
         Automatically tile windows of the specified types at creation.
       </description>
     </key>
-    <key name="enable-animations" type="b">
-      <default>true</default>
-      <summary>Enable Animations</summary>
-      <description>
-        Whether to enable animations.
-      </description>
-    </key>
     <key name="maximize-single" type="b">
       <default>true</default>
       <summary>Maximize Single</summary>

@@ -85,29 +85,11 @@ function refreshTile(win, idx, rect) {
       height: ming[3] + Math.random() * (maxg[3] - ming[3])
     });
   }
-  if (!rect)
-    return;
-  rect = addGaps(rect, tile.gaps);
-  win.unmaximize(Meta.MaximizeFlags.BOTH);
-  const act = win.get_compositor_private();
-  const old = win.get_frame_rect();
-  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
-  if (!_settings.get_boolean('enable-animations'))
-    return;
-  Tweener.addTween(act, {
-    transition: 'easeOutQuad',
-    time: 0.25,
-    translation_x: 0,
-    translation_y: 0,
-    scale_x: 1,
-    scale_y: 1,
-    onStart: () => {
-      act.translation_x = old.x - rect.x;
-      act.translation_y = old.y - rect.y;
-      act.set_pivot_point(0, 0);
-      act.set_scale(old.width / rect.width, old.height / rect.height);
-    }
-  });
+  if (rect) {
+    rect = addGaps(rect, tile.gaps);
+    win.unmaximize(Meta.MaximizeFlags.BOTH);
+    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+  }
 }
 
 function refreshMonitor(mon) {
