@@ -13,39 +13,6 @@ const bindings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
 });
 
-const layouts = {
-  horizontal: (wins, area) => {
-    const sr = settings.get_double('split-ratio');
-    const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
-    return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
-      x:      area.x,
-      y:      area.y + (i * area.height / part.length),
-      width:  area.width * sr,
-      height: area.height / part.length
-    })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
-      x:      area.x + area.width * sr,
-      y:      area.y + (i * area.height / part.length),
-      width:  area.width * (1 - sr),
-      height: area.height / part.length
-    })));
-  },
-  vertical: (wins, area) => {
-    const sr = settings.get_double('split-ratio');
-    const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
-    return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
-      x:      area.x + (i * area.width / part.length),
-      y:      area.y,
-      width:  area.width / part.length,
-      height: area.height * sr
-    })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
-      x:      area.x + (i * area.width / part.length),
-      y:      area.y + area.width * sr,
-      width:  area.width / part.length,
-      height: area.height * (1 - sr)
-    })));
-  }
-};
-
 let _current_layout = 'horizontal';
 let _current_tiles = {};
 
@@ -105,13 +72,14 @@ function refreshMonitor(mon) {
   if (wins.length === 1 && settings.get_boolean('maximize-single'))
     return wins[0].maximize(Meta.MaximizeFlags.BOTH);
   const marg = settings.get_value('margins').deep_unpack();
-  const area = wksp.get_work_area_for_monitor(mon);
-  layouts[_current_layout](wins, addGaps(area, new Meta.Rectangle({
+  const area = addGaps(wksp.get_work_area_for_monitor(mon), new Meta.Rectangle({
     x:      marg[0],
     y:      marg[1],
     width:  marg[2],
     height: marg[3]
-  }))).forEach((rect, idx) => refreshTile(wins[idx], idx, rect));
+  }));
+  Me.imports.layouts[_current_layout](settings, wins, area)
+    .forEach((rect, idx) => refreshTile(wins[idx], idx, rect));
 }
 
 function refresh() {
