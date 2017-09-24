@@ -4,8 +4,9 @@
       <choices>
         <choice value='horizontal'/>
         <choice value='vertical'/>
+        <choice value='spiral'/>
       </choices>
-      <default>['horizontal', 'vertical']</default>
+      <default>['horizontal', 'vertical', 'spiral']</default>
       <summary>Layouts</summary>
       <description>
         The order of available layouts.

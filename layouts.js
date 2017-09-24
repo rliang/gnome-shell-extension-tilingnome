@@ -31,3 +31,17 @@ function vertical(settings, wins, area) {
     height: area.height * (1 - sr)
   })));
 }
+
+function spiral(settings, wins, area, part) {
+  if (wins.length === 1)
+    return [area];
+  part = part || 0;
+  const sr = settings.get_double('split-ratio');
+  const mr = [
+    {x: area.x, y: area.y, width: area.width * sr, height: area.height},
+    {x: area.x, y: area.y, width: area.width, height: area.height * sr},
+    {x: area.x + area.width * sr, y: area.y, width: area.width * (1 - sr), height: area.height},
+    {x: area.x, y: area.y + area.height * sr, width: area.width, height: area.height * (1 - sr)},
+  ].map(r => new Meta.Rectangle(r));
+  return [mr[part]].concat(spiral(settings, wins.slice(1), mr[[2, 3, 0, 1][part]], part + 1 > 3 ? 0 : part + 1));
+}
