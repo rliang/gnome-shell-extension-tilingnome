@@ -13,8 +13,8 @@ const bindings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
 });
 
-let _current_layout = 'horizontal';
 let _current_tiles = {};
+let _current_layout = 'horizontal';
 
 function tileInit(win) {
   _current_tiles[win.get_stable_sequence()] = {idx: Infinity};

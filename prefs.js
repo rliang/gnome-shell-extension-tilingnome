@@ -1,15 +1,12 @@
 const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
-const Gtk = imports.gi.Gtk;
-const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Gio  = imports.gi.Gio;
+const Gtk  = imports.gi.Gtk;
+const Me   = imports.misc.extensionUtils.getCurrentExtension();
 
 const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
   Me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
 const settings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'], true)
-});
-const bindings = new Gio.Settings({
-  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
 });
 
 function prefsWidget(gs) {
@@ -43,9 +40,7 @@ function prefsWidget(gs) {
 }
 
 function buildPrefsWidget() {
-  const main = new Gtk.Notebook({});
-  main.append_page(prefsWidget(settings), new Gtk.Label({label: "Preferences"}));
-  main.append_page(prefsWidget(bindings), new Gtk.Label({label: "Keybindings"}));
+  const main = prefsWidget(settings);
   main.show_all();
   return main;
 }
