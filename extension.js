@@ -3,6 +3,7 @@ const Meta = imports.gi.Meta;
 const Shell = imports.gi.Shell;
 const Main = imports.ui.main;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Utils = Me.imports.utils;
 
 const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
   Me.dir.get_path(), Gio.SettingsSchemaSource.get_default(), false);
@@ -64,7 +65,7 @@ function refreshTile(win, idx, rect) {
 }
 
 function refreshMonitor(mon) {
-  const wksp = global.screen.get_active_workspace();
+  const wksp = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
   const wins = wksp.list_windows()
     .filter(win => win.get_monitor() === mon)
     .filter(win => !win.fullscreen)
@@ -85,7 +86,7 @@ function refreshMonitor(mon) {
 
 function refresh() {
   Meta.later_add(Meta.LaterType.RESIZE, () => {
-    for (let m = 0; m < global.screen.get_n_monitors(); m++)
+    for (let m = 0; m < Utils.DisplayWrapper.getScreen().get_n_monitors(); m++)
       refreshMonitor(m);
   });
 }
@@ -109,12 +110,12 @@ function isTileable(win) {
 }
 
 function getCurrentTiles() {
-  return global.screen.get_active_workspace().list_windows()
+  return Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace().list_windows()
     .filter(tileInfo).sort(tileSort);
 }
 
 function getFocusedWindow(win) {
-  return global.screen.get_active_workspace().list_windows()
+  return Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace().list_windows()
     .filter(win => win.has_focus())[0];
 }
 
@@ -135,7 +136,7 @@ function addKeybinding(name, handler) {
 
 function enable() {
   _handle_gs = settings.connect('changed', refresh);
-  _handle_sc = global.screen.connect('restacked', refresh);
+  _handle_sc = Utils.DisplayWrapper.getScreen().connect('restacked', refresh);
   _handle_wm0 = global.window_manager.connect('switch-workspace', refresh);
   _handle_wm1 = global.window_manager.connect('map', (g, w) => {
     if (isTileable(w.meta_window))
@@ -231,7 +232,7 @@ function enable() {
 
 function disable() {
   settings.disconnect(_handle_gs);
-  global.screen.disconnect(_handle_sc);
+  Utils.DisplayWrapper.getScreen().disconnect(_handle_sc);
   global.display.disconnect(_handle_display);
   global.window_manager.disconnect(_handle_wm0);
   global.window_manager.disconnect(_handle_wm1);
