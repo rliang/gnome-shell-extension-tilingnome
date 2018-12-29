@@ -131,7 +131,13 @@ function swapTiles(w1, w2) {
 }
 
 function addKeybinding(name, handler) {
-  Main.wm.addKeybinding(name, bindings, 0, Shell.ActionMode.NORMAL, handler);
+  if (Main.wm.addKeybinding && Shell.ActionMode) { // introduced in 3.16
+    Main.wm.addKeybinding(name, bindings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.NORMAL, handler);
+  } else if (Main.wm.addKeybinding && Shell.KeyBindingMode) { // introduced in 3.7.5
+    Main.wm.addKeybinding(name, bindings, Meta.KeyBindingFlags.NONE, Shell.KeyBindingMode.NORMAL | Shell.KeyBindingMode.MESSAGE_TRAY, handler);
+  } else {
+    global.display.add_keybinding(name, bindings, Meta.KeyBindingFlags.NONE, handler);
+  }
 }
 
 function enable() {
