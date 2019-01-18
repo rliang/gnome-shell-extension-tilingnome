@@ -2,7 +2,7 @@
   "name": "Tilingnome",
   "description": "Tiling window manager",
   "settings-schema": "org.gnome.shell.extensions.tilingnome",
-  "shell-version": ["3.14", "3.16", "3.18", "3.20", "3.22", "3.24", "3.26"],
+  "shell-version": ["3.14", "3.16", "3.18", "3.20", "3.22", "3.24", "3.26", "3.30"],
   "url": "https://github.com/rliang/gnome-shell-extension-tilingnome",
   "uuid": "tilingnome@rliang.github.com"
 }
