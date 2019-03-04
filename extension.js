@@ -69,6 +69,7 @@ function refreshMonitor(mon) {
   const wins = wksp.list_windows()
     .filter(win => win.get_monitor() === mon)
     .filter(win => !win.fullscreen)
+    .filter(win => !win.minimized)
     .filter(tileInfo)
     .sort(tileSort);
   if (wins.length === 1 && settings.get_boolean('maximize-single'))
