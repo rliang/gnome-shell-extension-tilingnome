@@ -8,6 +8,9 @@ const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
 const settings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'], true)
 });
+const keybindings = new Gio.Settings({
+  settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
+});
 
 function prefsWidget(gs) {
   const widget = new Gtk.Box({
@@ -40,10 +43,11 @@ function prefsWidget(gs) {
 }
 
 function buildPrefsWidget() {
-  const main = prefsWidget(settings);
-  main.show_all();
-  return main;
+  const ntbk = new Gtk.Notebook({});
+  ntbk.append_page(prefsWidget(settings), Gtk.Label.new('Settings'));
+  ntbk.append_page(prefsWidget(keybindings), Gtk.Label.new('Keybindings'));
+  ntbk.show_all();
+  return ntbk;
 }
 
-function init() {
-}
+function init() {}

@@ -140,28 +140,28 @@
       </description>
     </key>
     <key name="increase-split" type="as">
-      <default>['&lt;Super&gt;l']</default>
+      <default>['&lt;Super&gt;i']</default>
       <summary>Increase Split</summary>
       <description>
         Increase the split ratio by the split ratio step.
       </description>
     </key>
     <key name="decrease-split" type="as">
-      <default>['&lt;Super&gt;h']</default>
+      <default>['&lt;Super&gt;u']</default>
       <summary>Decrease Split</summary>
       <description>
         Decrease the split ratio by the split ratio step.
       </description>
     </key>
     <key name="increase-master-count" type="as">
-      <default>['&lt;Shift&gt;&lt;Super&gt;h']</default>
+      <default>['&lt;Shift&gt;&lt;Super&gt;i']</default>
       <summary>Increase Master Count</summary>
       <description>
         Increase the master count by 1.
       </description>
     </key>
     <key name="decrease-master-count" type="as">
-      <default>['&lt;Shift&gt;&lt;Super&gt;l']</default>
+      <default>['&lt;Shift&gt;&lt;Super&gt;u']</default>
       <summary>Decrease Master Count</summary>
       <description>
         Decrease the master count by 1.
