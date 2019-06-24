@@ -85,8 +85,10 @@ function refreshMonitor(mon) {
 }
 
 function refresh() {
-  for (let m = 0; m < Utils.DisplayWrapper.getScreen().get_n_monitors(); m++)
-    refreshMonitor(m);
+  Meta.later_add(Meta.LaterType.RESIZE, () => {
+    for (let m = 0; m < Utils.DisplayWrapper.getScreen().get_n_monitors(); m++)
+      refreshMonitor(m);
+  });
 }
 
 let _handle_gs;
