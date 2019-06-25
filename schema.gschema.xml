@@ -12,6 +12,45 @@
         The order of available layouts.
       </description>
     </key>
+    <key name="animation-transition" type="s">
+      <choices>
+        <choice value='linear'/>
+        <choice value='easeInSine'/>
+        <choice value='easeOutSine'/>
+        <choice value='easeInQuad'/>
+        <choice value='easeOutQuad'/>
+        <choice value='easeInCubic'/>
+        <choice value='easeOutCubic'/>
+        <choice value='easeInQuart'/>
+        <choice value='easeOutQuart'/>
+        <choice value='easeInQuint'/>
+        <choice value='easeOutQuint'/>
+        <choice value='easeInExpo'/>
+        <choice value='easeOutExpo'/>
+        <choice value='easeInCirc'/>
+        <choice value='easeOutCirc'/>
+        <choice value='easeInElastic'/>
+        <choice value='easeOutElastic'/>
+        <choice value='easeInBack'/>
+        <choice value='easeOutBack'/>
+        <choice value='easeInBounce'/>
+        <choice value='easeOutBounce'/>
+      </choices>
+      <default>'easeOutQuad'</default>
+      <summary>Transition</summary>
+      <description>
+        The transition type to apply when animating windows.
+        For example, 'easeOutElastic' applies a "wobbly windows" effect.
+      </description>
+    </key>
+    <key name="animation-duration" type="d">
+      <range min="0.0"/>
+      <default>0.25</default>
+      <summary>Duration</summary>
+      <description>
+        The animation duration in seconds.
+      </description>
+    </key>
     <key name="auto-tile-window-types" type="as">
       <default>['NORMAL']</default>
       <summary>Auto Tile Window Types</summary>

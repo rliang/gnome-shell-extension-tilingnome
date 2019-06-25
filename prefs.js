@@ -8,7 +8,7 @@ const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
 const settings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'], true)
 });
-const keybindings = new Gio.Settings({
+const bindings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata['settings-schema'] + '.keybindings', true)
 });
 
@@ -45,7 +45,7 @@ function prefsWidget(gs) {
 function buildPrefsWidget() {
   const ntbk = new Gtk.Notebook({});
   ntbk.append_page(prefsWidget(settings), Gtk.Label.new('Settings'));
-  ntbk.append_page(prefsWidget(keybindings), Gtk.Label.new('Keybindings'));
+  ntbk.append_page(prefsWidget(bindings), Gtk.Label.new('Keybindings'));
   ntbk.show_all();
   return ntbk;
 }

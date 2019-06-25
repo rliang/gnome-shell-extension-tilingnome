@@ -1,6 +1,7 @@
 const Gio = imports.gi.Gio;
 const Meta = imports.gi.Meta;
 const Shell = imports.gi.Shell;
+const Tweener = imports.ui.tweener;
 const Main = imports.ui.main;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Utils = Me.imports.utils;
@@ -61,6 +62,23 @@ function refreshTile(win, idx, rect) {
     rect = addGaps(rect, tile.gaps);
     win.unmaximize(Meta.MaximizeFlags.BOTH);
     win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+    Tweener.addTween(win.get_compositor_private(), {
+      transition: settings.get_string('animation-transition'),
+      time: settings.get_double('animation-duration'),
+      scale_x: 1,
+      scale_y: 1,
+      translation_x: 0,
+      translation_y: 0,
+      onStart: (actor, r1, r2) => {
+        if ((actor.translation_x = r1.x - r2.x) > 0)
+          actor.translation_x -= (r2.width - r1.width);
+        if ((actor.translation_y = r1.y - r2.y) > 0)
+          actor.translation_y -= (r2.height - r1.height);
+        actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
+        actor.set_scale(r1.width / r2.width, r1.height / r2.height);
+      },
+      onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
+    });
   }
 }
 
@@ -68,7 +86,7 @@ function refreshMonitor(mon) {
   const wksp = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
   const wins = wksp.list_windows()
     .filter(win => win.get_monitor() === mon)
-    .filter(win => !win.fullscreen)
+    .filter(win => !win.fullscreen && !win.minimized)
     .filter(tileInfo)
     .sort(tileSort);
   if (wins.length === 1 && settings.get_boolean('maximize-single'))
