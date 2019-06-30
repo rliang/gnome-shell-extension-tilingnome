@@ -60,8 +60,6 @@ function refreshTile(win, idx, rect) {
   }
   if (rect) {
     rect = addGaps(rect, tile.gaps);
-    win.unmaximize(Meta.MaximizeFlags.BOTH);
-    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
     Tweener.addTween(win.get_compositor_private(), {
       transition: settings.get_string('animation-transition'),
       time: settings.get_double('animation-duration'),
@@ -79,6 +77,8 @@ function refreshTile(win, idx, rect) {
       },
       onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
     });
+    win.unmaximize(Meta.MaximizeFlags.BOTH);
+    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
   }
 }
 

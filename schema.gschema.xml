@@ -36,8 +36,8 @@
         <choice value='easeInBounce'/>
         <choice value='easeOutBounce'/>
       </choices>
-      <default>'easeOutQuad'</default>
-      <summary>Transition</summary>
+      <default>'easeOutExpo'</default>
+      <summary>Animation Transition</summary>
       <description>
         The transition type to apply when animating windows.
         For example, 'easeOutElastic' applies a "wobbly windows" effect.
@@ -45,8 +45,8 @@
     </key>
     <key name="animation-duration" type="d">
       <range min="0.0"/>
-      <default>0.25</default>
-      <summary>Duration</summary>
+      <default>0.2</default>
+      <summary>Animation Duration</summary>
       <description>
         The animation duration in seconds.
       </description>
@@ -75,7 +75,7 @@
     </key>
     <key name="split-ratio" type="d">
       <range min="0.10" max="0.90"/>
-      <default>0.50</default>
+      <default>0.5</default>
       <summary>Split Ratio</summary>
       <description>
         The screen ratio for which windows are split.
@@ -83,7 +83,7 @@
     </key>
     <key name="split-ratio-step" type="d">
       <range min="0.0" max="0.40"/>
-      <default>0.050</default>
+      <default>0.05</default>
       <summary>Split Ratio Step</summary>
       <description>
         The ratio at which the split ratio is increased or decreased.
