@@ -26,20 +26,37 @@ let _current_layout = "horizontal";
 
 function tileInit(win) {
   _current_tiles[win.get_stable_sequence()] = { idx: Infinity };
+  refresh();
+}
+
+function tileInitAuto(win) {
+  const types = settings.get_strv("auto-tile-window-types");
+  if (types.some(t => win.window_type === Meta.WindowType[t])) tileInit(win);
 }
 
 function tileDestroy(win) {
   delete _current_tiles[win.get_stable_sequence()];
+  refresh();
 }
 
 function tileInfo(win) {
   return _current_tiles[win.get_stable_sequence()] || null;
 }
 
-function tileSort(w1, w2) {
+function tileCompare(w1, w2) {
   const i1 = tileInfo(w1);
   const i2 = tileInfo(w2);
   return i1.idx > i2.idx ? 1 : i1.idx < i2.idx ? -1 : 0;
+}
+
+function swapTiles(w1, w2) {
+  const i1 = tileInfo(w1);
+  const i2 = tileInfo(w2);
+  if (!i1 || !i2) return;
+  const tmp = i1.idx;
+  refreshTile(w1, i2.idx);
+  refreshTile(w2, tmp);
+  refresh();
 }
 
 function addGaps(area, gaps) {
@@ -95,18 +112,13 @@ function refreshMonitor(mon) {
     .filter(win => win.get_monitor() === mon)
     .filter(win => !win.fullscreen && !win.minimized)
     .filter(tileInfo)
-    .sort(tileSort);
+    .sort(tileCompare);
   if (wins.length === 1 && settings.get_boolean("maximize-single"))
     return wins[0].maximize(Meta.MaximizeFlags.BOTH);
-  const marg = settings.get_value("margins").deep_unpack();
+  const [x, y, width, height] = settings.get_value("margins").deep_unpack();
   const area = addGaps(
     wksp.get_work_area_for_monitor(mon),
-    new Meta.Rectangle({
-      x: marg[0],
-      y: marg[1],
-      width: marg[2],
-      height: marg[3]
-    })
+    new Meta.Rectangle({ x: x, y: y, width: width, height: height })
   );
   Me.imports.layouts[_current_layout](settings, wins, area).forEach(
     (rect, idx) => refreshTile(wins[idx], idx, rect)
@@ -114,10 +126,9 @@ function refreshMonitor(mon) {
 }
 
 function refresh() {
-  Meta.later_add(Meta.LaterType.RESIZE, () => {
-    for (let m = 0; m < Utils.DisplayWrapper.getScreen().get_n_monitors(); m++)
-      refreshMonitor(m);
-  });
+  Meta.later_add(Meta.LaterType.RESIZE, () =>
+    Main.layoutManager.monitors.forEach((_, m) => refreshMonitor(m))
+  );
 }
 
 let _handle_gs;
@@ -125,6 +136,8 @@ let _handle_sc;
 let _handle_wm0;
 let _handle_wm1;
 let _handle_wm2;
+let _handle_wm3;
+let _handle_wm4;
 let _handle_display;
 
 function arrayNeighbor(array, el, n) {
@@ -133,41 +146,30 @@ function arrayNeighbor(array, el, n) {
   return n >= len ? array[0] : n < 0 ? array[len - 1] : array[n];
 }
 
-function isAutoTileable(win) {
-  return settings
-    .get_strv("auto-tile-window-types")
-    .some(t => win.window_type === Meta.WindowType[t]);
+function getTiles() {
+  return global.get_window_actors()
+    .map(w => w.meta_window)
+    .filter(tileInfo)
+    .sort(tileCompare);
 }
 
-function getCurrentTiles() {
+function getWorkspaceTiles() {
   return Utils.DisplayWrapper.getWorkspaceManager()
     .get_active_workspace()
     .list_windows()
     .filter(tileInfo)
-    .sort(tileSort);
+    .sort(tileCompare);
 }
 
 function getFocusedWindow(win) {
   return Utils.DisplayWrapper.getWorkspaceManager()
     .get_active_workspace()
     .list_windows()
-    .filter(win => win.has_focus())[0];
-}
-
-function swapTiles(w1, w2) {
-  const i1 = tileInfo(w1);
-  const i2 = tileInfo(w2);
-  if (i1 && i2) {
-    const tmp = i1.idx;
-    refreshTile(w1, i2.idx);
-    refreshTile(w2, tmp);
-    refresh();
-  }
+    .find(win => win.has_focus());
 }
 
 function addKeybinding(name, handler) {
-  if (Main.wm.addKeybinding && Shell.ActionMode) {
-    // introduced in 3.16
+  if (Shell.ActionMode)
     Main.wm.addKeybinding(
       name,
       bindings,
@@ -175,8 +177,7 @@ function addKeybinding(name, handler) {
       Shell.ActionMode.NORMAL,
       handler
     );
-  } else if (Main.wm.addKeybinding && Shell.KeyBindingMode) {
-    // introduced in 3.7.5
+  else
     Main.wm.addKeybinding(
       name,
       bindings,
@@ -184,125 +185,99 @@ function addKeybinding(name, handler) {
       Shell.KeyBindingMode.NORMAL | Shell.KeyBindingMode.MESSAGE_TRAY,
       handler
     );
-  } else {
-    global.display.add_keybinding(
-      name,
-      bindings,
-      Meta.KeyBindingFlags.NONE,
-      handler
-    );
-  }
 }
 
 function enable() {
+  const wm = global.window_manager;
   _handle_gs = settings.connect("changed", refresh);
   _handle_sc = Utils.DisplayWrapper.getScreen().connect("restacked", refresh);
-  _handle_wm0 = global.window_manager.connect("switch-workspace", refresh);
-  _handle_wm1 = global.window_manager.connect("map", (g, w) => {
-    if (isAutoTileable(w.meta_window)) tileInit(w.meta_window);
-    refresh();
-  });
-  _handle_wm2 = global.window_manager.connect("destroy", (g, w) => {
-    tileDestroy(w.meta_window);
-  });
-  _handle_display = global.display.connect(
-    "grab-op-end",
-    (dis, scr, w1, op) => {
-      if (op !== Meta.GrabOp.MOVING) return;
-      const [px, py, pmask] = global.get_pointer();
-      for (let m = 0; m < Main.layoutManager.monitors.length; m++) {
-        const { x, y, width, height } = Main.layoutManager.monitors[m];
-        if (px < x || px > x + width || py < y || py > y + height) continue;
-        const p = new Meta.Rectangle({
-          x: px - x,
-          y: py - y,
-          width: 1,
-          height: 1
-        });
-        const w2 = getCurrentTiles()
-          .filter(w => w !== w1)
-          .filter(w => w.get_monitor() === m)
-          .filter(w => w.get_frame_rect().intersect(p)[0])[0];
-        if (w2) swapTiles(w1, w2);
-        return;
-      }
+  _handle_wm0 = wm.connect("switch-workspace", refresh);
+  _handle_wm1 = wm.connect("map", (g, w) => tileInitAuto(w.meta_window));
+  _handle_wm2 = wm.connect("destroy", (g, w) => tileDestroy(w.meta_window));
+  _handle_wm3 = wm.connect("minimize", (g, w) => tileDestroy(w.meta_window));
+  _handle_wm4 = wm.connect("unminimize", (g, w) => tileInitAuto(w.meta_window));
+  _handle_display = global.display.connect("grab-op-end", (_0, _1, w1, op) => {
+    if (op !== Meta.GrabOp.MOVING) return;
+    const [px, py, pmask] = global.get_pointer();
+    for (let m = 0; m < Main.layoutManager.monitors.length; m++) {
+      const { x, y, width, height } = Main.layoutManager.monitors[m];
+      if (px < x || px > x + width || py < y || py > y + height) continue;
+      const p = new Meta.Rectangle({
+        x: px - x,
+        y: py - y,
+        width: 1,
+        height: 1
+      });
+      const w2 = getWorkspaceTiles().find(
+        w =>
+          w !== w1 &&
+          w.get_monitor() === m &&
+          w.get_frame_rect().intersect(p)[0]
+      );
+      if (w2) swapTiles(w1, w2);
+      return;
     }
-  );
+  });
   addKeybinding("toggle-tile", () => {
     const win = getFocusedWindow();
     if (!win) return;
     if (tileInfo(win)) tileDestroy(win);
     else tileInit(win);
-    refresh();
   });
   addKeybinding("switch-next-layout", () => {
-    _current_layout = arrayNeighbor(
-      settings.get_strv("layouts"),
-      _current_layout,
-      1
-    );
+    const layouts = settings.get_strv("layouts");
+    _current_layout = arrayNeighbor(layouts, _current_layout, 1);
     refresh();
   });
   addKeybinding("switch-previous-layout", () => {
-    _current_layout = arrayNeighbor(
-      settings.get_strv("layouts"),
-      _current_layout,
-      -1
-    );
+    const layouts = settings.get_strv("layouts");
+    _current_layout = arrayNeighbor(layouts, _current_layout, -1);
     refresh();
   });
   addKeybinding("focus-next-tile", () => {
-    const win = arrayNeighbor(getCurrentTiles(), getFocusedWindow(), 1);
+    const win = arrayNeighbor(getWorkspaceTiles(), getFocusedWindow(), 1);
     if (win) win.focus(global.get_current_time());
   });
   addKeybinding("focus-previous-tile", () => {
-    const win = arrayNeighbor(getCurrentTiles(), getFocusedWindow(), -1);
+    const win = arrayNeighbor(getWorkspaceTiles(), getFocusedWindow(), -1);
     if (win) win.focus(global.get_current_time());
   });
   addKeybinding("focus-first-tile", () => {
-    const win = getCurrentTiles()[0];
+    const win = getWorkspaceTiles()[0];
     if (win) win.focus(global.get_current_time());
   });
   addKeybinding("swap-next-tile", () => {
     const w1 = getFocusedWindow();
-    const w2 = arrayNeighbor(getCurrentTiles(), w1, 1);
+    const w2 = arrayNeighbor(getWorkspaceTiles(), w1, 1);
     if (w1 && w2) swapTiles(w1, w2);
   });
   addKeybinding("swap-previous-tile", () => {
     const w1 = getFocusedWindow();
-    const w2 = arrayNeighbor(getCurrentTiles(), w1, -1);
+    const w2 = arrayNeighbor(getWorkspaceTiles(), w1, -1);
     if (w1 && w2) swapTiles(w1, w2);
   });
   addKeybinding("swap-first-tile", () => {
     const w1 = getFocusedWindow();
-    const w2 = getCurrentTiles()[0];
+    const w2 = getWorkspaceTiles()[0];
     if (w1 && w2) swapTiles(w1, w2);
   });
   addKeybinding("increase-split", () => {
     const r = settings.get_double("split-ratio");
-    settings.set_double(
-      "split-ratio",
-      r + settings.get_double("split-ratio-step")
-    );
+    const s = settings.get_double("split-ratio-step");
+    settings.set_double("split-ratio", r + s);
   });
   addKeybinding("decrease-split", () => {
     const r = settings.get_double("split-ratio");
-    settings.set_double(
-      "split-ratio",
-      r - settings.get_double("split-ratio-step")
-    );
+    const s = settings.get_double("split-ratio-step");
+    settings.set_double("split-ratio", r - s);
   });
-  addKeybinding("increase-master-count", () => {
-    const m = settings.get_uint("master-count");
-    settings.set_uint("master-count", m + 1);
-  });
-  addKeybinding("decrease-master-count", () => {
-    const m = settings.get_uint("master-count");
-    settings.set_uint("master-count", m - 1);
-  });
-  global.get_window_actors().forEach(win => {
-    if (isAutoTileable(win.meta_window)) tileInit(win.meta_window);
-  });
+  addKeybinding("increase-master-count", () =>
+    settings.set_uint("master-count", settings.get_uint("master-count") + 1)
+  );
+  addKeybinding("decrease-master-count", () =>
+    settings.set_uint("master-count", settings.get_uint("master-count") - 1)
+  );
+  global.get_window_actors().forEach(w => tileInitAuto(w.meta_window));
 }
 
 function disable() {
@@ -312,6 +287,8 @@ function disable() {
   global.window_manager.disconnect(_handle_wm0);
   global.window_manager.disconnect(_handle_wm1);
   global.window_manager.disconnect(_handle_wm2);
+  global.window_manager.disconnect(_handle_wm3);
+  global.window_manager.disconnect(_handle_wm4);
   Main.wm.removeKeybinding("toggle-tile");
   Main.wm.removeKeybinding("switch-next-layout");
   Main.wm.removeKeybinding("switch-previous-layout");
@@ -325,5 +302,5 @@ function disable() {
   Main.wm.removeKeybinding("decrease-split");
   Main.wm.removeKeybinding("increase-master-count");
   Main.wm.removeKeybinding("decrease-master-count");
-  global.get_window_actors().forEach(win => tileDestroy(win.meta_window));
+  global.get_window_actors().forEach(w => tileDestroy(w.meta_window));
 }
