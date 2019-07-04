@@ -19,7 +19,11 @@ let _current_tiles = {};
 let _current_layout = 'horizontal';
 
 function tileInit(win) {
-  _current_tiles[win.get_stable_sequence()] = {idx: Infinity};
+  if(_current_layout=="vertical"){
+    _current_tiles[win.get_stable_sequence()] = {idx: Infinity};  // slave-master - to order windows that have the same position !!!
+  }else{
+    _current_tiles[win.get_stable_sequence()] = {idx: -Infinity};  // slave-master - to order windows that have the same position !!!
+  }
 }
 
 function tileDestroy(win) {
@@ -34,6 +38,12 @@ function tileSort(w1, w2) {
   const i1 = tileInfo(w1);
   const i2 = tileInfo(w2);
   return i1.idx > i2.idx ? 1 : i1.idx < i2.idx ? -1 : 0;
+}
+
+function tileDSort(w1, w2) { //
+  const i1 = tileInfo(w1);
+  const i2 = tileInfo(w2);
+  return i1.idx < i2.idx ? 1 : i1.idx > i2.idx ? -1 : 0;
 }
 
 function addGaps(area, gaps) {
@@ -52,10 +62,10 @@ function refreshTile(win, idx, rect) {
     const ming = settings.get_value('minimum-gaps').deep_unpack();
     const maxg = settings.get_value('maximum-gaps').deep_unpack();
     tile.gaps = new Meta.Rectangle({
-      x:      ming[0] + Math.random() * (maxg[0] - ming[0]),
-      y:      ming[1] + Math.random() * (maxg[1] - ming[1]),
-      width:  ming[2] + Math.random() * (maxg[2] - ming[2]),
-      height: ming[3] + Math.random() * (maxg[3] - ming[3])
+      x:      ming[0], //+ Math.random() * (maxg[0] - ming[0]), //random ???
+      y:      ming[1], //+ Math.random() * (maxg[1] - ming[1]),
+      width:  ming[2], //+ Math.random() * (maxg[2] - ming[2]),
+      height: ming[3], //+ Math.random() * (maxg[3] - ming[3])
     });
   }
   if (rect) {
