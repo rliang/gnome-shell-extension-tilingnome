@@ -17,10 +17,24 @@ const bindings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata["settings-schema"] + ".keybindings", true)
 });
 
+function arrayNeighbor(array, el, n) {
+  n += array.indexOf(el);
+  const len = array.length;
+  return n >= len ? array[0] : n < 0 ? array[len - 1] : array[n];
+}
+
+function rectAddGaps(area, gaps) {
+  return new Meta.Rectangle({
+    x: Math.floor(area.x + gaps.x),
+    y: Math.floor(area.y + gaps.y),
+    width: Math.floor(area.width - gaps.width - gaps.x),
+    height: Math.floor(area.height - gaps.height - gaps.y)
+  });
+}
+
 function tileInit(win) {
   win.unmaximize(Meta.MaximizeFlags.BOTH);
   win._tilingnome = { idx: Infinity };
-  refresh();
 }
 
 function tileInitAuto(win) {
@@ -30,7 +44,6 @@ function tileInitAuto(win) {
 
 function tileDestroy(win) {
   delete win._tilingnome;
-  refresh();
 }
 
 function tileData(win) {
@@ -43,23 +56,12 @@ function tileCompare(w1, w2) {
   return i1.idx > i2.idx ? 1 : i1.idx < i2.idx ? -1 : 0;
 }
 
-function swapTiles(w1, w2) {
-  const i1 = tileData(w1);
-  const i2 = tileData(w2);
-  if (!i1 || !i2) return;
-  const tmp = i1.idx;
-  refreshTile(w1, i2.idx);
-  refreshTile(w2, tmp);
-  refresh();
-}
-
-function addGaps(area, gaps) {
-  return new Meta.Rectangle({
-    x: Math.floor(area.x + gaps.x),
-    y: Math.floor(area.y + gaps.y),
-    width: Math.floor(area.width - gaps.width - gaps.x),
-    height: Math.floor(area.height - gaps.height - gaps.y)
-  });
+function getWorkspaceTiles() {
+  return global.workspace_manager
+    .get_active_workspace()
+    .list_windows()
+    .filter(tileData)
+    .sort(tileCompare);
 }
 
 function refreshTile(win, idx, rect) {
@@ -76,7 +78,7 @@ function refreshTile(win, idx, rect) {
     });
   }
   if (!rect) return;
-  rect = addGaps(rect, tile.gaps);
+  rect = rectAddGaps(rect, tile.gaps);
   Meta.later_add(Meta.LaterType.IDLE, () => {
     Tweener.addTween(win.get_compositor_private(), {
       transition: settings.get_string("animation-transition"),
@@ -108,7 +110,7 @@ function refreshMonitor(mon) {
     .filter(tileData)
     .sort(tileCompare);
   const [x, y, width, height] = settings.get_value("margins").deep_unpack();
-  const area = addGaps(
+  const area = rectAddGaps(
     wksp.get_work_area_for_monitor(mon),
     new Meta.Rectangle({ x: x, y: y, width: width, height: height })
   );
@@ -116,34 +118,19 @@ function refreshMonitor(mon) {
   if (!layouts.length) return;
   const layout = Me.imports.layouts[layouts[0]];
   if (!layout) return;
-  layout(settings, wins, area).forEach((rect, idx) => refreshTile(wins[idx], idx, rect));
+  layout(settings, wins, area).forEach((rect, idx) =>
+    refreshTile(wins[idx], idx, rect)
+  );
 }
 
 function refresh() {
   Main.layoutManager.monitors.forEach((_, m) => refreshMonitor(m));
 }
 
-let _handle_gs;
-let _handle_wm0;
-let _handle_wm1;
-let _handle_wm2;
-let _handle_wm3;
-let _handle_wm4;
-let _handle_display0;
-let _handle_display1;
+const _handles = [];
 
-function arrayNeighbor(array, el, n) {
-  n += array.indexOf(el);
-  const len = array.length;
-  return n >= len ? array[0] : n < 0 ? array[len - 1] : array[n];
-}
-
-function getWorkspaceTiles() {
-  return global.workspace_manager
-    .get_active_workspace()
-    .list_windows()
-    .filter(tileData)
-    .sort(tileCompare);
+function addSignal(obj, name, handler) {
+  _handles.push([obj, obj.connect(name, handler)]);
 }
 
 function addKeybinding(name, handler) {
@@ -157,44 +144,49 @@ function addKeybinding(name, handler) {
 }
 
 function enable() {
-  _handle_gs = settings.connect("changed", refresh);
-  _handle_wm0 = global.window_manager.connect("map", (g, w) => {
+  addSignal(settings, "changed", refresh);
+  addSignal(global.window_manager, "map", (_, w) => {
     tileInitAuto(w.meta_window);
+    refresh();
   });
-  _handle_wm1 = global.window_manager.connect("destroy", refresh);
-  _handle_wm2 = global.window_manager.connect("minimize", refresh);
-  _handle_wm3 = global.window_manager.connect("unminimize", refresh);
-  _handle_wm4 = global.window_manager.connect("switch-workspace", refresh);
-  _handle_display0 = global.display.connect("restacked", refresh);
-  _handle_display1 = global.display.connect("grab-op-end", (_0, _1, w1, op) => {
+  addSignal(global.window_manager, "destroy", refresh);
+  addSignal(global.window_manager, "minimize", refresh);
+  addSignal(global.window_manager, "unminimize", refresh);
+  addSignal(global.window_manager, "switch-workspace", refresh);
+  addSignal(global.display, "restacked", refresh);
+  addSignal(global.display, "grab-op-end", (_0, _1, w1, op) => {
     if (op !== Meta.GrabOp.MOVING) return;
+    const i1 = tileData(w1);
+    if (!i1) return;
     const [px, py, pmask] = global.get_pointer();
-    for (let m = 0; m < Main.layoutManager.monitors.length; m++) {
-      const { x, y, width, height } = Main.layoutManager.monitors[m];
-      if (px < x || px > x + width || py < y || py > y + height) continue;
-      const p = new Meta.Rectangle({
-        x: px - x,
-        y: py - y,
-        width: 1,
-        height: 1
-      });
-      const w2 = getWorkspaceTiles().find(
-        w =>
-          w !== w1 &&
-          w.get_monitor() === m &&
-          w.get_frame_rect().intersect(p)[0]
-      );
-      if (w2) {
-        swapTiles(w1, w2);
-        return;
-      }
-    }
+    const p = new Meta.Rectangle({ x: px, y: py, width: 1, height: 1 });
+    const m = Main.layoutManager.monitors.find(({ x, y, width, height }) =>
+      new Meta.Rectangle({ x, y, width, height }).intersect(p)
+    );
+    if (!m) return;
+    p.x -= m.x;
+    p.y -= m.y;
+    const w2 = getWorkspaceTiles().find(
+      w =>
+        w !== w1 &&
+        w.get_monitor() === m.index &&
+        w.get_frame_rect().intersect(p)[0]
+    );
+    if (!w2) return;
+    const i2 = tileData(w2);
+    if (!i1 || !i2) return;
+    const tmp = i1.idx;
+    refreshTile(w1, i2.idx);
+    refreshTile(w2, tmp);
+    refresh();
+    return;
   });
   addKeybinding("toggle-tile", () => {
     const win = global.display.get_focus_window();
     if (!win) return;
     if (tileData(win)) tileDestroy(win);
     else tileInit(win);
+    refresh();
   });
   addKeybinding("switch-next-layout", () => {
     const layouts = settings.get_strv("layouts");
@@ -223,17 +215,38 @@ function enable() {
   addKeybinding("swap-next-tile", () => {
     const w1 = global.display.get_focus_window();
     const w2 = arrayNeighbor(getWorkspaceTiles(), w1, 1);
-    if (w1 && w2) swapTiles(w1, w2);
+    if (!w1 || !w2) return;
+    const i1 = tileData(w1),
+      i2 = tileData(w2);
+    if (!i1 || !i2) return;
+    const tmp = i1.idx;
+    refreshTile(w1, i2.idx);
+    refreshTile(w2, tmp);
+    refresh();
   });
   addKeybinding("swap-previous-tile", () => {
     const w1 = global.display.get_focus_window();
     const w2 = arrayNeighbor(getWorkspaceTiles(), w1, -1);
-    if (w1 && w2) swapTiles(w1, w2);
+    if (!w1 || !w2) return;
+    const i1 = tileData(w1),
+      i2 = tileData(w2);
+    if (!i1 || !i2) return;
+    const tmp = i1.idx;
+    refreshTile(w1, i2.idx);
+    refreshTile(w2, tmp);
+    refresh();
   });
   addKeybinding("swap-first-tile", () => {
     const w1 = global.display.get_focus_window();
     const w2 = getWorkspaceTiles()[0];
-    if (w1 && w2) swapTiles(w1, w2);
+    if (!w1 || !w2) return;
+    const i1 = tileData(w1),
+      i2 = tileData(w2);
+    if (!i1 || !i2) return;
+    const tmp = i1.idx;
+    refreshTile(w1, i2.idx);
+    refreshTile(w2, tmp);
+    refresh();
   });
   addKeybinding("increase-split", () => {
     const r = settings.get_double("split-ratio");
@@ -252,17 +265,11 @@ function enable() {
     settings.set_uint("master-count", settings.get_uint("master-count") - 1)
   );
   global.get_window_actors().forEach(w => tileInitAuto(w.meta_window));
+  refresh();
 }
 
 function disable() {
-  settings.disconnect(_handle_gs);
-  global.display.disconnect(_handle_display0);
-  global.display.disconnect(_handle_display1);
-  global.window_manager.disconnect(_handle_wm0);
-  global.window_manager.disconnect(_handle_wm1);
-  global.window_manager.disconnect(_handle_wm2);
-  global.window_manager.disconnect(_handle_wm3);
-  global.window_manager.disconnect(_handle_wm4);
+  for (const [obj, handle] of _handles) obj.disconnect(handle);
   Main.wm.removeKeybinding("toggle-tile");
   Main.wm.removeKeybinding("switch-next-layout");
   Main.wm.removeKeybinding("switch-previous-layout");
