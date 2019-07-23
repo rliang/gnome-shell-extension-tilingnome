@@ -10,9 +10,12 @@ Tiling window manager
 
 ## Installation
 
-```sh
+1) Clone the project to the gnome-shell extensions folders
+```
 git clone https://github.com/rliang/gnome-shell-extension-tilingnome ~/.local/share/gnome-shell/extensions/tilingnome@rliang.github.com
 ```
+2) Reload gnome-shell:  `Alt+F2` type `r` then Return
+3) Open `gnome-tweaks`, select Extensions and activate `Tilinggnome`
 
 ## Usage
 
