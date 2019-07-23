@@ -58,13 +58,6 @@
         Automatically tile windows of the specified types at creation.
       </description>
     </key>
-    <key name="maximize-single" type="b">
-      <default>true</default>
-      <summary>Maximize Single</summary>
-      <description>
-        Whether to maximize lone windows instead of tiling.
-      </description>
-    </key>
     <key name="master-count" type="u">
       <range min="1"/>
       <default>1</default>

@@ -25,6 +25,7 @@ let _current_tiles = {};
 let _current_layout = "horizontal";
 
 function tileInit(win) {
+  win.unmaximize(Meta.MaximizeFlags.BOTH);
   _current_tiles[win.get_stable_sequence()] = { idx: Infinity };
   refresh();
 }
@@ -81,40 +82,36 @@ function refreshTile(win, idx, rect) {
       height: ming[3] + Math.random() * (maxg[3] - ming[3])
     });
   }
-  if (rect) {
-    rect = addGaps(rect, tile.gaps);
-    Tweener.addTween(win.get_compositor_private(), {
-      transition: settings.get_string("animation-transition"),
-      time: settings.get_double("animation-duration"),
-      scale_x: 1,
-      scale_y: 1,
-      translation_x: 0,
-      translation_y: 0,
-      onStart: (actor, r1, r2) => {
-        if ((actor.translation_x = r1.x - r2.x) > 0)
-          actor.translation_x -= r2.width - r1.width;
-        if ((actor.translation_y = r1.y - r2.y) > 0)
-          actor.translation_y -= r2.height - r1.height;
-        actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
-        actor.set_scale(r1.width / r2.width, r1.height / r2.height);
-      },
-      onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
-    });
-    win.unmaximize(Meta.MaximizeFlags.BOTH);
-    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
-  }
+  if (!rect) return;
+  rect = addGaps(rect, tile.gaps);
+  Tweener.addTween(win.get_compositor_private(), {
+    transition: settings.get_string("animation-transition"),
+    time: settings.get_double("animation-duration"),
+    scale_x: 1,
+    scale_y: 1,
+    translation_x: 0,
+    translation_y: 0,
+    onStart: (actor, r1, r2) => {
+      if ((actor.translation_x = r1.x - r2.x) > 0)
+        actor.translation_x -= r2.width - r1.width;
+      if ((actor.translation_y = r1.y - r2.y) > 0)
+        actor.translation_y -= r2.height - r1.height;
+      actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
+      actor.set_scale(r1.width / r2.width, r1.height / r2.height);
+    },
+    onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
+  });
+  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
 }
 
 function refreshMonitor(mon) {
-  const wksp = Utils.DisplayWrapper.getWorkspaceManager().get_active_workspace();
+  const wksp = global.workspace_manager.get_active_workspace();
   const wins = wksp
     .list_windows()
     .filter(win => win.get_monitor() === mon)
     .filter(win => !win.fullscreen && !win.minimized)
     .filter(tileInfo)
     .sort(tileCompare);
-  if (wins.length === 1 && settings.get_boolean("maximize-single"))
-    return wins[0].maximize(Meta.MaximizeFlags.BOTH);
   const [x, y, width, height] = settings.get_value("margins").deep_unpack();
   const area = addGaps(
     wksp.get_work_area_for_monitor(mon),
@@ -126,19 +123,17 @@ function refreshMonitor(mon) {
 }
 
 function refresh() {
-  Meta.later_add(Meta.LaterType.RESIZE, () =>
-    Main.layoutManager.monitors.forEach((_, m) => refreshMonitor(m))
-  );
+  Main.layoutManager.monitors.forEach((_, m) => refreshMonitor(m));
 }
 
 let _handle_gs;
-let _handle_sc;
+let _handle_display0;
 let _handle_wm0;
 let _handle_wm1;
 let _handle_wm2;
 let _handle_wm3;
 let _handle_wm4;
-let _handle_display;
+let _handle_display1;
 
 function arrayNeighbor(array, el, n) {
   n += array.indexOf(el);
@@ -146,57 +141,33 @@ function arrayNeighbor(array, el, n) {
   return n >= len ? array[0] : n < 0 ? array[len - 1] : array[n];
 }
 
-function getTiles() {
-  return global.get_window_actors()
-    .map(w => w.meta_window)
-    .filter(tileInfo)
-    .sort(tileCompare);
-}
-
 function getWorkspaceTiles() {
-  return Utils.DisplayWrapper.getWorkspaceManager()
+  return global.workspace_manager
     .get_active_workspace()
     .list_windows()
     .filter(tileInfo)
     .sort(tileCompare);
-}
-
-function getFocusedWindow(win) {
-  return Utils.DisplayWrapper.getWorkspaceManager()
-    .get_active_workspace()
-    .list_windows()
-    .find(win => win.has_focus());
 }
 
 function addKeybinding(name, handler) {
-  if (Shell.ActionMode)
-    Main.wm.addKeybinding(
-      name,
-      bindings,
-      Meta.KeyBindingFlags.NONE,
-      Shell.ActionMode.NORMAL,
-      handler
-    );
-  else
-    Main.wm.addKeybinding(
-      name,
-      bindings,
-      Meta.KeyBindingFlags.NONE,
-      Shell.KeyBindingMode.NORMAL | Shell.KeyBindingMode.MESSAGE_TRAY,
-      handler
-    );
+  Main.wm.addKeybinding(
+    name,
+    bindings,
+    Meta.KeyBindingFlags.NONE,
+    Shell.ActionMode.NORMAL,
+    handler
+  );
 }
 
 function enable() {
-  const wm = global.window_manager;
   _handle_gs = settings.connect("changed", refresh);
-  _handle_sc = Utils.DisplayWrapper.getScreen().connect("restacked", refresh);
-  _handle_wm0 = wm.connect("switch-workspace", refresh);
-  _handle_wm1 = wm.connect("map", (g, w) => tileInitAuto(w.meta_window));
-  _handle_wm2 = wm.connect("destroy", (g, w) => tileDestroy(w.meta_window));
-  _handle_wm3 = wm.connect("minimize", (g, w) => tileDestroy(w.meta_window));
-  _handle_wm4 = wm.connect("unminimize", (g, w) => tileInitAuto(w.meta_window));
-  _handle_display = global.display.connect("grab-op-end", (_0, _1, w1, op) => {
+  _handle_wm0 = global.window_manager.connect("map", (g, w) => tileInitAuto(w.meta_window));
+  _handle_wm1 = global.window_manager.connect("destroy", refresh);
+  _handle_wm2 = global.window_manager.connect("minimize", refresh);
+  _handle_wm3 = global.window_manager.connect("unminimize", refresh);
+  _handle_wm4 = global.window_manager.connect("switch-workspace", refresh);
+  _handle_display0 = global.display.connect("restacked", refresh);
+  _handle_display1 = global.display.connect("grab-op-end", (_0, _1, w1, op) => {
     if (op !== Meta.GrabOp.MOVING) return;
     const [px, py, pmask] = global.get_pointer();
     for (let m = 0; m < Main.layoutManager.monitors.length; m++) {
@@ -214,12 +185,14 @@ function enable() {
           w.get_monitor() === m &&
           w.get_frame_rect().intersect(p)[0]
       );
-      if (w2) swapTiles(w1, w2);
-      return;
+      if (w2) {
+        swapTiles(w1, w2);
+        return;
+      }
     }
   });
   addKeybinding("toggle-tile", () => {
-    const win = getFocusedWindow();
+    const win = global.display.get_focus_window();
     if (!win) return;
     if (tileInfo(win)) tileDestroy(win);
     else tileInit(win);
@@ -235,29 +208,31 @@ function enable() {
     refresh();
   });
   addKeybinding("focus-next-tile", () => {
-    const win = arrayNeighbor(getWorkspaceTiles(), getFocusedWindow(), 1);
-    if (win) win.focus(global.get_current_time());
+    const w1 = global.display.get_focus_window();
+    const w2 = arrayNeighbor(getWorkspaceTiles(), w1, 1);
+    if (w2) w2.focus(global.get_current_time());
   });
   addKeybinding("focus-previous-tile", () => {
-    const win = arrayNeighbor(getWorkspaceTiles(), getFocusedWindow(), -1);
-    if (win) win.focus(global.get_current_time());
+    const w1 = global.display.get_focus_window();
+    const w2 = arrayNeighbor(getWorkspaceTiles(), w1, -1);
+    if (w2) w2.focus(global.get_current_time());
   });
   addKeybinding("focus-first-tile", () => {
-    const win = getWorkspaceTiles()[0];
-    if (win) win.focus(global.get_current_time());
+    const w2 = getWorkspaceTiles()[0];
+    if (w2) w2.focus(global.get_current_time());
   });
   addKeybinding("swap-next-tile", () => {
-    const w1 = getFocusedWindow();
+    const w1 = global.display.get_focus_window();
     const w2 = arrayNeighbor(getWorkspaceTiles(), w1, 1);
     if (w1 && w2) swapTiles(w1, w2);
   });
   addKeybinding("swap-previous-tile", () => {
-    const w1 = getFocusedWindow();
+    const w1 = global.display.get_focus_window();
     const w2 = arrayNeighbor(getWorkspaceTiles(), w1, -1);
     if (w1 && w2) swapTiles(w1, w2);
   });
   addKeybinding("swap-first-tile", () => {
-    const w1 = getFocusedWindow();
+    const w1 = global.display.get_focus_window();
     const w2 = getWorkspaceTiles()[0];
     if (w1 && w2) swapTiles(w1, w2);
   });
@@ -282,8 +257,8 @@ function enable() {
 
 function disable() {
   settings.disconnect(_handle_gs);
-  Utils.DisplayWrapper.getScreen().disconnect(_handle_sc);
-  global.display.disconnect(_handle_display);
+  global.display.disconnect(_handle_display0);
+  global.display.disconnect(_handle_display1);
   global.window_manager.disconnect(_handle_wm0);
   global.window_manager.disconnect(_handle_wm1);
   global.window_manager.disconnect(_handle_wm2);

@@ -2,33 +2,35 @@ const Meta = imports.gi.Meta;
 
 function horizontal(settings, wins, area) {
   const sr = settings.get_double('split-ratio');
-  const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
+  const mc = settings.get_uint('master-count');
+  const size = mc < wins.length ? area.width * sr : area.width;
   return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
     x:      area.x,
     y:      area.y + (i * area.height / part.length),
-    width:  area.width * sr,
+    width:  size,
     height: area.height / part.length
   })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
-    x:      area.x + area.width * sr,
+    x:      area.x + size,
     y:      area.y + (i * area.height / part.length),
-    width:  area.width * (1 - sr),
+    width:  area.width - size,
     height: area.height / part.length
   })));
 }
 
 function vertical(settings, wins, area) {
   const sr = settings.get_double('split-ratio');
-  const mc = Math.min(settings.get_uint('master-count'), wins.length - 1);
+  const mc = settings.get_uint('master-count');
+  const size = mc < wins.length ? area.height * sr : area.height;
   return wins.slice(0, mc).map((_, i, part) => new Meta.Rectangle({
     x:      area.x + (i * area.width / part.length),
     y:      area.y,
     width:  area.width / part.length,
-    height: area.height * sr
+    height: size
   })).concat(wins.slice(mc).map((_, i, part) => new Meta.Rectangle({
     x:      area.x + (i * area.width / part.length),
     y:      area.y + area.width * sr,
     width:  area.width / part.length,
-    height: area.height * (1 - sr)
+    height: area.height - size
   })));
 }
 
