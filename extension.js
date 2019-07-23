@@ -4,7 +4,6 @@ const Shell = imports.gi.Shell;
 const Tweener = imports.ui.tweener;
 const Main = imports.ui.main;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const Utils = Me.imports.utils;
 
 const SchemaSource = Gio.SettingsSchemaSource.new_from_directory(
   Me.dir.get_path(),
@@ -78,24 +77,26 @@ function refreshTile(win, idx, rect) {
   }
   if (!rect) return;
   rect = addGaps(rect, tile.gaps);
-  Tweener.addTween(win.get_compositor_private(), {
-    transition: settings.get_string("animation-transition"),
-    time: settings.get_double("animation-duration"),
-    scale_x: 1,
-    scale_y: 1,
-    translation_x: 0,
-    translation_y: 0,
-    onStart: (actor, r1, r2) => {
-      if ((actor.translation_x = r1.x - r2.x) > 0)
-        actor.translation_x -= r2.width - r1.width;
-      if ((actor.translation_y = r1.y - r2.y) > 0)
-        actor.translation_y -= r2.height - r1.height;
-      actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
-      actor.set_scale(r1.width / r2.width, r1.height / r2.height);
-    },
-    onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
+  Meta.later_add(Meta.LaterType.IDLE, () => {
+    Tweener.addTween(win.get_compositor_private(), {
+      transition: settings.get_string("animation-transition"),
+      time: settings.get_double("animation-duration"),
+      scale_x: 1,
+      scale_y: 1,
+      translation_x: 0,
+      translation_y: 0,
+      onStart: (actor, r1, r2) => {
+        if ((actor.translation_x = r1.x - r2.x) > 0)
+          actor.translation_x -= r2.width - r1.width;
+        if ((actor.translation_y = r1.y - r2.y) > 0)
+          actor.translation_y -= r2.height - r1.height;
+        actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
+        actor.set_scale(r1.width / r2.width, r1.height / r2.height);
+      },
+      onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
+    });
+    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
   });
-  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
 }
 
 function refreshMonitor(mon) {
@@ -157,7 +158,9 @@ function addKeybinding(name, handler) {
 
 function enable() {
   _handle_gs = settings.connect("changed", refresh);
-  _handle_wm0 = global.window_manager.connect("map", (g, w) => tileInitAuto(w.meta_window));
+  _handle_wm0 = global.window_manager.connect("map", (g, w) => {
+    tileInitAuto(w.meta_window);
+  });
   _handle_wm1 = global.window_manager.connect("destroy", refresh);
   _handle_wm2 = global.window_manager.connect("minimize", refresh);
   _handle_wm3 = global.window_manager.connect("unminimize", refresh);
