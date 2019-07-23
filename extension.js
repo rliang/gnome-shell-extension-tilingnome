@@ -15,18 +15,12 @@ const settings = new Gio.Settings({
   settings_schema: SchemaSource.lookup(Me.metadata["settings-schema"], true)
 });
 const bindings = new Gio.Settings({
-  settings_schema: SchemaSource.lookup(
-    Me.metadata["settings-schema"] + ".keybindings",
-    true
-  )
+  settings_schema: SchemaSource.lookup(Me.metadata["settings-schema"] + ".keybindings", true)
 });
-
-let _current_tiles = {};
-let _current_layout = "horizontal";
 
 function tileInit(win) {
   win.unmaximize(Meta.MaximizeFlags.BOTH);
-  _current_tiles[win.get_stable_sequence()] = { idx: Infinity };
+  win._tilingnome = { idx: Infinity };
   refresh();
 }
 
@@ -36,23 +30,23 @@ function tileInitAuto(win) {
 }
 
 function tileDestroy(win) {
-  delete _current_tiles[win.get_stable_sequence()];
+  delete win._tilingnome;
   refresh();
 }
 
-function tileInfo(win) {
-  return _current_tiles[win.get_stable_sequence()] || null;
+function tileData(win) {
+  return win._tilingnome;
 }
 
 function tileCompare(w1, w2) {
-  const i1 = tileInfo(w1);
-  const i2 = tileInfo(w2);
+  const i1 = tileData(w1);
+  const i2 = tileData(w2);
   return i1.idx > i2.idx ? 1 : i1.idx < i2.idx ? -1 : 0;
 }
 
 function swapTiles(w1, w2) {
-  const i1 = tileInfo(w1);
-  const i2 = tileInfo(w2);
+  const i1 = tileData(w1);
+  const i2 = tileData(w2);
   if (!i1 || !i2) return;
   const tmp = i1.idx;
   refreshTile(w1, i2.idx);
@@ -70,7 +64,7 @@ function addGaps(area, gaps) {
 }
 
 function refreshTile(win, idx, rect) {
-  const tile = tileInfo(win);
+  const tile = tileData(win);
   if (tile.idx !== idx) {
     tile.idx = idx;
     const ming = settings.get_value("minimum-gaps").deep_unpack();
@@ -110,16 +104,18 @@ function refreshMonitor(mon) {
     .list_windows()
     .filter(win => win.get_monitor() === mon)
     .filter(win => !win.fullscreen && !win.minimized)
-    .filter(tileInfo)
+    .filter(tileData)
     .sort(tileCompare);
   const [x, y, width, height] = settings.get_value("margins").deep_unpack();
   const area = addGaps(
     wksp.get_work_area_for_monitor(mon),
     new Meta.Rectangle({ x: x, y: y, width: width, height: height })
   );
-  Me.imports.layouts[_current_layout](settings, wins, area).forEach(
-    (rect, idx) => refreshTile(wins[idx], idx, rect)
-  );
+  const layouts = settings.get_strv("layouts");
+  if (!layouts.length) return;
+  const layout = Me.imports.layouts[layouts[0]];
+  if (!layout) return;
+  layout(settings, wins, area).forEach((rect, idx) => refreshTile(wins[idx], idx, rect));
 }
 
 function refresh() {
@@ -127,12 +123,12 @@ function refresh() {
 }
 
 let _handle_gs;
-let _handle_display0;
 let _handle_wm0;
 let _handle_wm1;
 let _handle_wm2;
 let _handle_wm3;
 let _handle_wm4;
+let _handle_display0;
 let _handle_display1;
 
 function arrayNeighbor(array, el, n) {
@@ -145,7 +141,7 @@ function getWorkspaceTiles() {
   return global.workspace_manager
     .get_active_workspace()
     .list_windows()
-    .filter(tileInfo)
+    .filter(tileData)
     .sort(tileCompare);
 }
 
@@ -194,18 +190,18 @@ function enable() {
   addKeybinding("toggle-tile", () => {
     const win = global.display.get_focus_window();
     if (!win) return;
-    if (tileInfo(win)) tileDestroy(win);
+    if (tileData(win)) tileDestroy(win);
     else tileInit(win);
   });
   addKeybinding("switch-next-layout", () => {
     const layouts = settings.get_strv("layouts");
-    _current_layout = arrayNeighbor(layouts, _current_layout, 1);
-    refresh();
+    layouts.push(layouts.shift());
+    settings.set_strv("layouts", layouts);
   });
   addKeybinding("switch-previous-layout", () => {
     const layouts = settings.get_strv("layouts");
-    _current_layout = arrayNeighbor(layouts, _current_layout, -1);
-    refresh();
+    layouts.unshift(layouts.pop());
+    settings.set_strv("layouts", layouts);
   });
   addKeybinding("focus-next-tile", () => {
     const w1 = global.display.get_focus_window();
