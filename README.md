@@ -4,18 +4,25 @@ Tiling window manager
 
 ## Features
 
-* Horizontal, vertical layouts
+* Horizontal, vertical, spiral layouts
 * Gaps
 * (Experimental) Multi-monitor
 
 ## Installation
 
-1) Clone the project to the gnome-shell extensions folders
+1) Clone the project to the gnome-shell extension directory:
+
 ```
-git clone https://github.com/rliang/gnome-shell-extension-tilingnome ~/.local/share/gnome-shell/extensions/tilingnome@rliang.github.com
+git clone --depth=1 https://github.com/rliang/gnome-shell-extension-tilingnome ~/.local/share/gnome-shell/extensions/tilingnome@rliang.github.com
 ```
-2) Reload gnome-shell:  `Alt+F2` type `r` then Return
-3) Open `gnome-tweaks`, select Extensions and activate `Tilinggnome`
+
+2) Reload GNOME Shell: `Alt+F2` then `r` or log out and in;
+
+3) Enable the extension:
+
+```
+gnome-shell-extension-tool -e tilingnome@rliang.github.com
+```
 
 ## Usage
 
@@ -53,8 +60,7 @@ The available ones are listed below.
 ## Recommended `~/.config/gtk-3.0/gtk.css`
 
 ```css
-:not(tooltip) decoration { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.23); }
-:not(tooltip) decoration, headerbar { border-radius: 0;  }
+:not(tooltip) decoration, headerbar { border-radius: 0; box-shadow: none; }
 ```
 
 ## Contributing
