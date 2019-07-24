@@ -61,6 +61,7 @@ function getWorkspaceTiles() {
     .get_active_workspace()
     .list_windows()
     .filter(tileData)
+    .filter(win => !win.fullscreen && !win.get_maximized() && !win.minimized)
     .sort(tileCompare);
 }
 
@@ -79,7 +80,9 @@ function refreshTile(win, idx, rect) {
   }
   if (!rect) return;
   rect = rectAddGaps(rect, tile.gaps);
-  Meta.later_add(Meta.LaterType.IDLE, () => {
+  const oldrect = win.get_frame_rect();
+  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+  Meta.later_add(Meta.LaterType.IDLE, () =>
     Tweener.addTween(win.get_compositor_private(), {
       transition: settings.get_string("animation-transition"),
       time: settings.get_double("animation-duration"),
@@ -95,20 +98,14 @@ function refreshTile(win, idx, rect) {
         actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
         actor.set_scale(r1.width / r2.width, r1.height / r2.height);
       },
-      onStartParams: [win.get_compositor_private(), win.get_frame_rect(), rect]
-    });
-    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
-  });
+      onStartParams: [win.get_compositor_private(), oldrect, rect]
+    })
+  );
 }
 
 function refreshMonitor(mon) {
   const wksp = global.workspace_manager.get_active_workspace();
-  const wins = wksp
-    .list_windows()
-    .filter(win => win.get_monitor() === mon)
-    .filter(win => !win.fullscreen && !win.minimized)
-    .filter(tileData)
-    .sort(tileCompare);
+  const wins = getWorkspaceTiles().filter(win => win.get_monitor() === mon);
   const [x, y, width, height] = settings.get_value("margins").deep_unpack();
   const area = rectAddGaps(
     wksp.get_work_area_for_monitor(mon),
@@ -153,7 +150,6 @@ function enable() {
   addSignal(global.window_manager, "minimize", refresh);
   addSignal(global.window_manager, "unminimize", refresh);
   addSignal(global.window_manager, "switch-workspace", refresh);
-  addSignal(global.display, "restacked", refresh);
   addSignal(global.display, "grab-op-end", (_0, _1, w1, op) => {
     if (op !== Meta.GrabOp.MOVING) return;
     const i1 = tileData(w1);
