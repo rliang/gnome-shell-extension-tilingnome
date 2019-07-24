@@ -6,12 +6,12 @@ function horizontal(settings, wins, area) {
     x:      area.x,
     y:      area.y + (i * area.height / part.length),
     width:  width,
-    height: area.height / part.length
+    height: Math.ceil(area.height / part.length)
   })).concat(wins.slice(mc).map((_, i, part) => ({
     x:      area.x + width,
     y:      area.y + (i * area.height / part.length),
     width:  area.width - width,
-    height: area.height / part.length
+    height: Math.ceil(area.height / part.length)
   })));
 }
 
@@ -22,12 +22,12 @@ function vertical(settings, wins, area) {
   return wins.slice(0, mc).map((_, i, part) => ({
     x:      area.x + (i * area.width / part.length),
     y:      area.y,
-    width:  area.width / part.length,
+    width:  Math.ceil(area.width / part.length),
     height: height
   })).concat(wins.slice(mc).map((_, i, part) => ({
     x:      area.x + (i * area.width / part.length),
     y:      area.y + area.width * sr,
-    width:  area.width / part.length,
+    width:  Math.ceil(area.width / part.length),
     height: area.height - height
   })));
 }
