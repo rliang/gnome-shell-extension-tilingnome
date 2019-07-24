@@ -24,12 +24,12 @@ function arrayNeighbor(array, el, n) {
 }
 
 function rectAddGaps(area, gaps) {
-  return new Meta.Rectangle({
+  return {
     x: Math.floor(area.x + gaps.x),
     y: Math.floor(area.y + gaps.y),
     width: Math.floor(area.width - gaps.width - gaps.x),
     height: Math.floor(area.height - gaps.height - gaps.y)
-  });
+  };
 }
 
 function tileInit(win) {
@@ -65,59 +65,57 @@ function getWorkspaceTiles() {
     .sort(tileCompare);
 }
 
-function refreshTile(win, idx, rect) {
+function refreshTile(win, idx) {
   const tile = tileData(win);
   if (tile.idx !== idx) {
     tile.idx = idx;
     const ming = settings.get_value("minimum-gaps").deep_unpack();
     const maxg = settings.get_value("maximum-gaps").deep_unpack();
-    tile.gaps = new Meta.Rectangle({
+    tile.gaps = {
       x: ming[0] + Math.random() * (maxg[0] - ming[0]),
       y: ming[1] + Math.random() * (maxg[1] - ming[1]),
       width: ming[2] + Math.random() * (maxg[2] - ming[2]),
       height: ming[3] + Math.random() * (maxg[3] - ming[3])
-    });
+    };
   }
-  if (!rect) return;
-  rect = rectAddGaps(rect, tile.gaps);
-  const oldrect = win.get_frame_rect();
-  win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
-  Meta.later_add(Meta.LaterType.IDLE, () =>
-    Tweener.addTween(win.get_compositor_private(), {
-      transition: settings.get_string("animation-transition"),
-      time: settings.get_double("animation-duration"),
-      scale_x: 1,
-      scale_y: 1,
-      translation_x: 0,
-      translation_y: 0,
-      onStart: (actor, r1, r2) => {
-        if ((actor.translation_x = r1.x - r2.x) > 0)
-          actor.translation_x -= r2.width - r1.width;
-        if ((actor.translation_y = r1.y - r2.y) > 0)
-          actor.translation_y -= r2.height - r1.height;
-        actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
-        actor.set_scale(r1.width / r2.width, r1.height / r2.height);
-      },
-      onStartParams: [win.get_compositor_private(), oldrect, rect]
-    })
-  );
+  return tile;
 }
 
 function refreshMonitor(mon) {
   const wksp = global.workspace_manager.get_active_workspace();
   const wins = getWorkspaceTiles().filter(win => win.get_monitor() === mon);
   const [x, y, width, height] = settings.get_value("margins").deep_unpack();
-  const area = rectAddGaps(
-    wksp.get_work_area_for_monitor(mon),
-    new Meta.Rectangle({ x: x, y: y, width: width, height: height })
-  );
+  const area = rectAddGaps(wksp.get_work_area_for_monitor(mon), { x, y, width, height });
   const layouts = settings.get_strv("layouts");
   if (!layouts.length) return;
   const layout = Me.imports.layouts[layouts[0]];
   if (!layout) return;
-  layout(settings, wins, area).forEach((rect, idx) =>
-    refreshTile(wins[idx], idx, rect)
-  );
+  layout(settings, wins, area).forEach((rect, idx) => {
+    const win = wins[idx];
+    const oldrect = win.get_frame_rect();
+    const tile = refreshTile(win, idx);
+    rect = rectAddGaps(rect, tile.gaps);
+    win.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+    Meta.later_add(Meta.LaterType.IDLE, () =>
+      Tweener.addTween(win.get_compositor_private(), {
+        transition: settings.get_string("animation-transition"),
+        time: settings.get_double("animation-duration"),
+        scale_x: 1,
+        scale_y: 1,
+        translation_x: 0,
+        translation_y: 0,
+        onStart: (actor, r1, r2) => {
+          if ((actor.translation_x = r1.x - r2.x) > 0)
+            actor.translation_x -= r2.width - r1.width;
+          if ((actor.translation_y = r1.y - r2.y) > 0)
+            actor.translation_y -= r2.height - r1.height;
+          actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
+          actor.set_scale(r1.width / r2.width, r1.height / r2.height);
+        },
+        onStartParams: [win.get_compositor_private(), oldrect, rect]
+      })
+    );
+  });
 }
 
 function refresh() {
