@@ -1,34 +1,34 @@
-function horizontal(settings, wins, area) {
+function horizontal(settings, wins, { x, y, width, height }) {
   const sr = settings.get_double('split-ratio');
   const mc = settings.get_uint('master-count');
-  const width = mc < wins.length ? area.width * sr : area.width;
+  const w1 = mc < wins.length ? width * sr : width;
   return wins.slice(0, mc).map((_, i, part) => ({
-    x:      area.x,
-    y:      area.y + (i * area.height / part.length),
-    width:  width,
-    height: Math.ceil(area.height / part.length)
+    x:      x,
+    y:      y + (i * height / part.length),
+    width:  w1,
+    height: Math.ceil(height / part.length)
   })).concat(wins.slice(mc).map((_, i, part) => ({
-    x:      area.x + width,
-    y:      area.y + (i * area.height / part.length),
-    width:  area.width - width,
-    height: Math.ceil(area.height / part.length)
+    x:      x + w1,
+    y:      y + (i * height / part.length),
+    width:  width - w1,
+    height: Math.ceil(height / part.length)
   })));
 }
 
-function vertical(settings, wins, area) {
+function vertical(settings, wins, { x, y, width, height }) {
   const sr = settings.get_double('split-ratio');
   const mc = settings.get_uint('master-count');
-  const height = mc < wins.length ? area.height * sr : area.height;
+  const h1 = mc < wins.length ? height * sr : height;
   return wins.slice(0, mc).map((_, i, part) => ({
-    x:      area.x + (i * area.width / part.length),
-    y:      area.y,
-    width:  Math.ceil(area.width / part.length),
-    height: height
+    x:      x + (i * width / part.length),
+    y:      y,
+    width:  Math.ceil(width / part.length),
+    height: h1
   })).concat(wins.slice(mc).map((_, i, part) => ({
-    x:      area.x + (i * area.width / part.length),
-    y:      area.y + area.width * sr,
-    width:  Math.ceil(area.width / part.length),
-    height: area.height - height
+    x:      x + (i * width / part.length),
+    y:      y + h1,
+    width:  Math.ceil(width / part.length),
+    height: height - h1
   })));
 }
 
