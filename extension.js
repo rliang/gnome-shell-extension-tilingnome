@@ -38,8 +38,9 @@ function tileInit(win) {
 }
 
 function tileInitAuto(win) {
-  for (const type of settings.get_strv("auto-tile-window-types"))
-    if (win.window_type === Meta.WindowType[type]) return tileInit(win);
+  if (!win.get_transient_for())
+    for (const type of settings.get_strv("auto-tile-window-types"))
+      if (win.window_type === Meta.WindowType[type]) return tileInit(win);
 }
 
 function tileDestroy(win) {
