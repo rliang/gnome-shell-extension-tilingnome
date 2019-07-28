@@ -1,7 +1,7 @@
 function horizontal(settings, wins, { x, y, width, height }) {
   const sr = settings.get_double('split-ratio');
   const mc = settings.get_uint('master-count');
-  const w1 = mc < wins.length ? width * sr : width;
+  const w1 = mc < wins.length ? Math.floor(width * sr) : width;
   return wins.slice(0, mc).map((_, i, part) => ({
     x:      x,
     y:      y + (i * height / part.length),
@@ -18,7 +18,7 @@ function horizontal(settings, wins, { x, y, width, height }) {
 function vertical(settings, wins, { x, y, width, height }) {
   const sr = settings.get_double('split-ratio');
   const mc = settings.get_uint('master-count');
-  const h1 = mc < wins.length ? height * sr : height;
+  const h1 = mc < wins.length ? Math.floor(height * sr) : height;
   return wins.slice(0, mc).map((_, i, part) => ({
     x:      x + (i * width / part.length),
     y:      y,
