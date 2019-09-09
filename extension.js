@@ -97,9 +97,11 @@ function refresh() {
       const data = tileSetIndex(tile, i);
       const rect = rectAddGaps(rects[i], data.gaps);
       const oldrect = tile.get_frame_rect();
+      const actor = tile.get_compositor_private();
+      actor.shadow_mode = settings.get_boolean("no-mutter-shadows") ? Meta.ShadowMode.FORCED_OFF : Meta.ShadowMode.AUTO;
       tile.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
       Meta.later_add(Meta.LaterType.IDLE, () =>
-        Tweener.addTween(tile.get_compositor_private(), {
+        Tweener.addTween(actor, {
           transition: settings.get_string("animation-transition"),
           time: settings.get_double("animation-duration"),
           scale_x: 1,
@@ -114,7 +116,7 @@ function refresh() {
             actor.set_pivot_point(r2.x >= r1.x ? 0 : 1, r2.y >= r1.y ? 0 : 1);
             actor.set_scale(r1.width / r2.width, r1.height / r2.height);
           },
-          onStartParams: [tile.get_compositor_private(), oldrect, rect]
+          onStartParams: [actor, oldrect, rect]
         })
       );
     }

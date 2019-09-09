@@ -51,6 +51,13 @@
         The animation duration in seconds.
       </description>
     </key>
+    <key name="no-mutter-shadows" type="b">
+      <default>true</default>
+      <summary>No Mutter Shadows</summary>
+      <description>
+        Whether to disable server-side shadows.
+      </description>
+    </key>
     <key name="auto-tile-window-types" type="as">
       <default>['NORMAL']</default>
       <summary>Auto Tile Window Types</summary>
